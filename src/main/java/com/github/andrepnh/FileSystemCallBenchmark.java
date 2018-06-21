@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import static com.github.andrepnh.BenchmarkParams.*;
+import static com.google.common.base.Preconditions.checkState;
 
 public class FileSystemCallBenchmark {
     @State(Scope.Benchmark)
@@ -20,7 +21,8 @@ public class FileSystemCallBenchmark {
         @Setup(Level.Iteration)
         public void prepareForWrite() throws IOException {
             file = new File(UUID.randomUUID().toString());
-            assert file.createNewFile();
+            checkState(file.createNewFile(), "Could not create file %s", file.getName());
+            file.deleteOnExit();
             writer = new BufferedWriter(new FileWriter(file));
 
             payload = new char[PAYLOAD_LENGTH];
@@ -35,8 +37,10 @@ public class FileSystemCallBenchmark {
                 }
             } finally {
                 if (file != null) {
-                    // TODO files not deleted
-                    assert file.delete();
+                    // Requesting file deletion on JVM termination takes care of deleting files when tbe benchmark
+                    // process is interrupted. Now we're just making sure files are deleted as soon no longer necessary
+                    // to avoid disk space issues
+                    checkState(file.delete(), "Could not delete file %s", file.getName());
                 }
             }
         }
@@ -53,7 +57,8 @@ public class FileSystemCallBenchmark {
         @Setup(Level.Iteration)
         public void prepareForRead() throws IOException {
             file = new File(UUID.randomUUID().toString());
-            assert file.createNewFile();
+            checkState(file.createNewFile(), "Could not create file %s", file.getName());
+            file.deleteOnExit();
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
                 Arrays.fill(toRead, 'a');
                 writer.write(toRead);
@@ -63,15 +68,9 @@ public class FileSystemCallBenchmark {
         }
 
         @TearDown(Level.Iteration)
-        public void deleteFile() throws IOException {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } finally {
-                if (file != null) {
-                    assert file.delete();
-                }
+        public void closeReader() throws IOException {
+            if (reader != null) {
+                reader.close();
             }
         }
     }
@@ -79,15 +78,16 @@ public class FileSystemCallBenchmark {
     @Benchmark
     @Fork(FORKS)
     @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @Warmup(iterations = WARMUP_ITERATIONS)
     public void fileWrite(WritingState state) throws IOException {
         state.writer.write(state.payload);
+        state.writer.flush();
     }
 
     @Benchmark
     @Fork(FORKS)
     @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @Warmup(iterations = WARMUP_ITERATIONS)
     public void fileRead(ReadingState state) throws IOException {
         state.reader.read(state.toRead);
         state.reader.reset();
