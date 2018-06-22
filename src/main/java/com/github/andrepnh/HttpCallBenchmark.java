@@ -2,10 +2,7 @@ package com.github.andrepnh;
 
 import io.undertow.Undertow;
 import io.undertow.util.Headers;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import okhttp3.*;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.IOException;
@@ -42,7 +39,6 @@ public class HttpCallBenchmark {
 
         @TearDown(Level.Iteration)
         public void stopServer() {
-            // TODO properly dispose client
             server.stop();
         }
     }
@@ -55,7 +51,6 @@ public class HttpCallBenchmark {
 
         @Setup(Level.Iteration)
         public void prepareRequest() {
-            // TODO properly dispose client
             client = new OkHttpClient();
             request = new Request.Builder()
                 // TODO might be https actually
@@ -73,7 +68,6 @@ public class HttpCallBenchmark {
 
         @Setup(Level.Iteration)
         public void prepareRequest() {
-            // TODO properly dispose client
             client = new OkHttpClient();
             // TODO different "payload" size
             request = new Request.Builder().url("https://google.com").build();
@@ -85,7 +79,9 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String localHttpRequest(LocalHttpState state) throws IOException {
-        return state.client.newCall(state.request).execute().body().string();
+        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+            return body.string();
+        }
     }
 
     @Benchmark
@@ -93,7 +89,9 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String remoteHttpRequest(RemoteHttpState state) throws IOException {
-        return state.client.newCall(state.request).execute().body().string();
+        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+            return body.string();
+        }
     }
 
     @Benchmark
@@ -101,6 +99,8 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String remoteHttpsRequest(RemoteHttpsState state) throws IOException {
-        return state.client.newCall(state.request).execute().body().string();
+        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+            return body.string();
+        }
     }
 }
