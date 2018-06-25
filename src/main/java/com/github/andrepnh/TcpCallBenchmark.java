@@ -6,6 +6,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -68,6 +69,8 @@ public class TcpCallBenchmark {
     public static class SocketReading {
         private static final AtomicInteger SERIAL = new AtomicInteger();
 
+        private static final int WRITE_TO_READS_RATIO = 1000;
+
         private Thread serverThread;
 
         private ServerSocket serverSocket;
@@ -80,10 +83,10 @@ public class TcpCallBenchmark {
 
         public char[] readBuffer;
 
-        public final Semaphore writePermits = new Semaphore(50);
+        public final Semaphore writePermits = new Semaphore(50000);
 
         @Setup(Level.Iteration)
-        public void openServerSocket() throws IOException, ExecutionException, InterruptedException {
+        public void openServerSocket() throws IOException, InterruptedException {
             payload = new char[PAYLOAD_LENGTH];
             readBuffer = new char[PAYLOAD_LENGTH];
             Arrays.fill(payload, 'a');
@@ -94,20 +97,27 @@ public class TcpCallBenchmark {
                 try (Socket clientSocket = serverSocket.accept();
                      BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))) {
                     // Some head start; notice the writer will block once the reader has gone through half the payloads
-                    for (int i = 0; i < writePermits.availablePermits() * 2; i++) {
-                        writer.write(payload);
-                    }
+                    char[] largePayload = new char[PAYLOAD_LENGTH * writePermits.availablePermits() / WRITE_TO_READS_RATIO];
+                    Arrays.fill(largePayload, 'a');
+                    writer.write(largePayload);
                     writer.flush();
+                    largePayload = null;
                     while (!Thread.interrupted() && !clientSocket.isClosed()) {
                         try {
                             writePermits.acquire();
                         } catch (InterruptedException e) {
                             break;
                         }
-                        if (!clientSocket.isClosed()) {
-                            // TODO socket write error
-                            writer.write(payload);
-                            writer.flush();
+                        for (int i = 0; i < WRITE_TO_READS_RATIO; i++) {
+                            if (!clientSocket.isClosed()) {
+                                try {
+                                    writer.write(payload);
+                                    writer.flush();
+                                    System.out.print("w");
+                                } catch (IOException e) {
+                                    throw new IllegalStateException(e);
+                                }
+                            }
                         }
                     }
                 } catch (IOException e) {
@@ -122,11 +132,11 @@ public class TcpCallBenchmark {
 
         @TearDown(Level.Iteration)
         public void closeSockets() throws Exception {
-            clientSocketReader.close();
-            clientSocket.close();
             serverThread.interrupt();
             serverThread.join();
             serverSocket.close();
+            clientSocketReader.close();
+            clientSocket.close();
         }
     }
 
@@ -136,14 +146,16 @@ public class TcpCallBenchmark {
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public void tcpWrite(SocketWriting state) throws IOException {
         state.clientSocketWriter.write(state.payload);
+        state.clientSocketWriter.flush();
     }
 
     @Benchmark
-    @Fork(FORKS)
+    @Fork(value = FORKS, jvmArgsAppend = {"-Xms4096m", "-Xmx4096m"})
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public void tcpRead(SocketReading state) throws IOException {
         state.clientSocketReader.read(state.readBuffer);
+        System.out.print("R");
         state.writePermits.release();
     }
 }
