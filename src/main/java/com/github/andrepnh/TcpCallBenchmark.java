@@ -1,16 +1,20 @@
 package com.github.andrepnh;
 
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Sets;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.github.andrepnh.BenchmarkParams.*;
 
@@ -67,80 +71,84 @@ public class TcpCallBenchmark {
 
     @State(Scope.Thread)
     public static class SocketReading {
-        private static final AtomicInteger SERIAL = new AtomicInteger();
+        private static final AtomicInteger SERIAL = new AtomicInteger(20000);
 
-        private static final int WRITE_TO_READS_RATIO = 1000;
+        private ServerSocketPool serverPool;
 
-        private Thread serverThread;
+        private List<SocketReading2> clientSockets;
 
-        private ServerSocket serverSocket;
-
-        private Socket clientSocket;
+        // TODO deadlock with low permits
+        public final Semaphore writePermits = new Semaphore(500000);
 
         public Reader clientSocketReader;
 
-        private char[] payload;
-
-        public char[] readBuffer;
-
-        public final Semaphore writePermits = new Semaphore(50000);
+        public Iterator<SocketReading2> cyclicClientSockets;
 
         @Setup(Level.Iteration)
-        public void openServerSocket() throws IOException, InterruptedException {
-            payload = new char[PAYLOAD_LENGTH];
-            readBuffer = new char[PAYLOAD_LENGTH];
-            Arrays.fill(payload, 'a');
-            Arrays.fill(readBuffer, 'a');
-            int port = 20000 + SERIAL.getAndIncrement();
-            serverSocket = new ServerSocket(port);
-            serverThread = new Thread(() -> {
-                try (Socket clientSocket = serverSocket.accept();
-                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))) {
-                    // Some head start; notice the writer will block once the reader has gone through half the payloads
-                    char[] largePayload = new char[PAYLOAD_LENGTH * writePermits.availablePermits() / WRITE_TO_READS_RATIO];
-                    Arrays.fill(largePayload, 'a');
-                    writer.write(largePayload);
-                    writer.flush();
-                    largePayload = null;
-                    while (!Thread.interrupted() && !clientSocket.isClosed()) {
-                        try {
-                            writePermits.acquire();
-                        } catch (InterruptedException e) {
-                            break;
-                        }
-                        for (int i = 0; i < WRITE_TO_READS_RATIO; i++) {
-                            if (!clientSocket.isClosed()) {
-                                try {
-                                    writer.write(payload);
-                                    writer.flush();
-                                    System.out.print("w");
-                                } catch (IOException e) {
-                                    throw new IllegalStateException(e);
-                                }
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    throw new IllegalStateException(e);
-                }
-            }, SocketReading.class.getSimpleName() + ":" + port);
-            serverThread.start();
-            TimeUnit.MILLISECONDS.sleep(200);
-            clientSocket = new Socket("localhost", port);
-            clientSocketReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        public void openServerSocket() {
+            serverPool = new ServerSocketPool(
+                Sets.newHashSet(SERIAL.getAndIncrement(), SERIAL.getAndIncrement(), SERIAL.getAndIncrement()),
+                50000);
+            clientSockets = serverPool.startServers()
+                .stream()
+                .map(clientSocket -> new SocketReading2(clientSocket, PAYLOAD_LENGTH))
+                .collect(Collectors.toList());
+            cyclicClientSockets = Iterators.cycle(clientSockets);
         }
 
         @TearDown(Level.Iteration)
-        public void closeSockets() throws Exception {
-            serverThread.interrupt();
-            serverThread.join();
-            serverSocket.close();
-            clientSocketReader.close();
-            clientSocket.close();
+        public void closeSockets() {
+            serverPool.stopServers();
+            try {
+                serverPool.awaitStop(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                // NOOP
+            }
+            clientSockets.forEach(SocketReading2::closeUnchecked);
         }
     }
 
-    @Benchmark
+    private static class SocketReading2 implements AutoCloseable {
+        private final Socket socket;
+
+        private final Reader socketReader;
+
+        private final char[] buffer;
+
+        public SocketReading2(Socket socket, int bufferLength) {
+            this.socket = socket;
+            try {
+                this.socketReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+            this.buffer = new char[bufferLength];
+        }
+
+        public Reader getSocketReader() {
+            return socketReader;
+        }
+
+        public char[] getBuffer() {
+            return buffer;
+        }
+
+        public void closeUnchecked() {
+            try {
+                close();
+            } catch(Exception ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Override
+        public void close() throws Exception {
+            socketReader.close();
+            socket.close();
+        }
+    }
+
+//    @Benchmark
     @Fork(FORKS)
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
@@ -150,12 +158,13 @@ public class TcpCallBenchmark {
     }
 
     @Benchmark
-    @Fork(value = FORKS, jvmArgsAppend = {"-Xms4096m", "-Xmx4096m"})
+    @Fork(value = FORKS)
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public void tcpRead(SocketReading state) throws IOException {
-        state.clientSocketReader.read(state.readBuffer);
-        System.out.print("R");
+        SocketReading2 clientSocket = state.cyclicClientSockets.next();
+        clientSocket.getSocketReader().read(clientSocket.getBuffer());
+//        System.out.print("R");
         state.writePermits.release();
     }
 }
