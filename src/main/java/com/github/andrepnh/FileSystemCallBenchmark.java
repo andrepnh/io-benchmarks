@@ -3,7 +3,6 @@ package com.github.andrepnh;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.*;
-import java.util.Arrays;
 import java.util.UUID;
 
 import static com.github.andrepnh.BenchmarkParams.*;
@@ -14,31 +13,30 @@ public class FileSystemCallBenchmark {
     public static class WritingState {
         private File file;
 
-        public BufferedWriter writer;
+        public OutputStream outputStream;
 
-        public char[] payload;
+        public byte[] payload;
 
         @Setup(Level.Iteration)
         public void prepareForWrite() throws IOException {
             file = new File(UUID.randomUUID().toString());
             checkState(file.createNewFile(), "Could not create file %s", file.getName());
             file.deleteOnExit();
-            writer = new BufferedWriter(new FileWriter(file));
+            outputStream = new BufferedOutputStream(new FileOutputStream(file));
 
-            payload = new char[PAYLOAD_LENGTH];
-            Arrays.fill(payload, 'a');
+            payload = Payload.copy();
         }
 
         @TearDown(Level.Iteration)
         public void deleteFile() throws IOException {
             try {
-                if (writer != null) {
-                    writer.close();
+                if (outputStream != null) {
+                    outputStream.close();
                 }
             } finally {
                 if (file != null) {
                     // Requesting file deletion on JVM termination takes care of deleting files when tbe benchmark
-                    // process is interrupted. Now we're just making sure files are deleted as soon no longer necessary
+                    // process is interrupted. Now we're just making sure files are deleted as soon as no longer necessary
                     // to avoid disk space issues
                     checkState(file.delete(), "Could not delete file %s", file.getName());
                 }
@@ -50,27 +48,26 @@ public class FileSystemCallBenchmark {
     public static class ReadingState {
         private File file;
 
-        public BufferedReader reader;
+        public BufferedInputStream inputStream;
 
-        public final char[] toRead = new char[PAYLOAD_LENGTH];
+        public final byte[] toRead = new byte[Payload.ACTUAL.length];
 
         @Setup(Level.Iteration)
         public void prepareForRead() throws IOException {
             file = new File(UUID.randomUUID().toString());
             checkState(file.createNewFile(), "Could not create file %s", file.getName());
             file.deleteOnExit();
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                Arrays.fill(toRead, 'a');
-                writer.write(toRead);
+            try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))) {
+                bos.write(Payload.ACTUAL);
             }
-            reader = new BufferedReader(new FileReader(file));
-            reader.mark(toRead.length * 2);
+            inputStream = new BufferedInputStream(new FileInputStream(file));
+            inputStream.mark(toRead.length * 2);
         }
 
         @TearDown(Level.Iteration)
         public void closeReader() throws IOException {
-            if (reader != null) {
-                reader.close();
+            if (inputStream != null) {
+                inputStream.close();
             }
         }
     }
@@ -80,8 +77,8 @@ public class FileSystemCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations = WARMUP_ITERATIONS)
     public void fileWrite(WritingState state) throws IOException {
-        state.writer.write(state.payload);
-        state.writer.flush();
+        state.outputStream.write(state.payload);
+        state.outputStream.flush();
     }
 
     @Benchmark
@@ -89,7 +86,7 @@ public class FileSystemCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations = WARMUP_ITERATIONS)
     public void fileRead(ReadingState state) throws IOException {
-        state.reader.read(state.toRead);
-        state.reader.reset();
+        state.inputStream.read(state.toRead);
+        state.inputStream.reset();
     }
 }

@@ -1,15 +1,14 @@
 package com.github.andrepnh;
 
 import io.undertow.Undertow;
-import io.undertow.util.Headers;
+import io.undertow.util.HeaderMap;
 import okhttp3.*;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 import static com.github.andrepnh.BenchmarkParams.*;
-
 
 public class HttpCallBenchmark {
     @State(Scope.Thread)
@@ -25,10 +24,12 @@ public class HttpCallBenchmark {
             server = Undertow.builder()
                 .addHttpListener(8080, "localhost")
                 .setHandler(serverExchange -> {
-                    serverExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    ByteBuffer responseBody = ByteBuffer.wrap(Payload.copy());
+                    HeaderMap responseHeaders = serverExchange.getResponseHeaders();
+                    Payload.RESPONSE_HEADERS.forEach((name, values) -> responseHeaders.putAll(name, values));
                     serverExchange.getRequestReceiver().receivePartialBytes((exchange, content, last) -> {
                         if (last) {
-                            exchange.getResponseSender().send("");
+                            exchange.getResponseSender().send(responseBody);
                         }
                     });
                 }).build();
@@ -40,6 +41,7 @@ public class HttpCallBenchmark {
         @TearDown(Level.Iteration)
         public void stopServer() {
             server.stop();
+            Utils.close(client);
         }
     }
 
@@ -53,10 +55,13 @@ public class HttpCallBenchmark {
         public void prepareRequest() {
             client = new OkHttpClient();
             request = new Request.Builder()
-                // TODO might be https actually
-                // TODO different "payload" size
-                .url("http://google.com")
+                .url("http://en.wikipedia.org/static/images/project-logos/enwiki.png")
                 .build();
+        }
+
+        @TearDown(Level.Iteration)
+        public void closeClient() {
+            Utils.close(client);
         }
     }
 
@@ -69,8 +74,12 @@ public class HttpCallBenchmark {
         @Setup(Level.Iteration)
         public void prepareRequest() {
             client = new OkHttpClient();
-            // TODO different "payload" size
-            request = new Request.Builder().url("https://google.com").build();
+            request = new Request.Builder().url("https://en.wikipedia.org/static/images/project-logos/enwiki.png").build();
+        }
+
+        @TearDown(Level.Iteration)
+        public void closeClient() {
+            Utils.close(client);
         }
     }
 
@@ -79,7 +88,8 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String localHttpRequest(LocalHttpState state) throws IOException {
-        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+        try (Response response = state.client.newCall(state.request).execute();
+             ResponseBody body = response.body()) {
             return body.string();
         }
     }
@@ -89,7 +99,8 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String remoteHttpRequest(RemoteHttpState state) throws IOException {
-        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+        try (Response response = state.client.newCall(state.request).execute();
+             ResponseBody body = response.body()) {
             return body.string();
         }
     }
@@ -99,7 +110,8 @@ public class HttpCallBenchmark {
     @Measurement(iterations = ITERATIONS)
     @Warmup(iterations  = WARMUP_ITERATIONS)
     public String remoteHttpsRequest(RemoteHttpsState state) throws IOException {
-        try (ResponseBody body = state.client.newCall(state.request).execute().body()) {
+        try (Response response = state.client.newCall(state.request).execute();
+             ResponseBody body = response.body()) {
             return body.string();
         }
     }
