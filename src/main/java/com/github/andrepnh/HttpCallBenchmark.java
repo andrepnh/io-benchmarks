@@ -8,8 +8,6 @@ import org.openjdk.jmh.annotations.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static com.github.andrepnh.BenchmarkParams.*;
-
 public class HttpCallBenchmark {
     @State(Scope.Thread)
     public static class LocalHttpState {
@@ -84,9 +82,7 @@ public class HttpCallBenchmark {
     }
 
     @Benchmark
-    @Fork(FORKS)
-    @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
     public String localHttpRequest(LocalHttpState state) throws IOException {
         try (Response response = state.client.newCall(state.request).execute();
              ResponseBody body = response.body()) {
@@ -95,9 +91,7 @@ public class HttpCallBenchmark {
     }
 
     @Benchmark
-    @Fork(FORKS)
-    @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
     public String remoteHttpRequest(RemoteHttpState state) throws IOException {
         try (Response response = state.client.newCall(state.request).execute();
              ResponseBody body = response.body()) {
@@ -106,9 +100,7 @@ public class HttpCallBenchmark {
     }
 
     @Benchmark
-    @Fork(FORKS)
-    @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
     public String remoteHttpsRequest(RemoteHttpsState state) throws IOException {
         try (Response response = state.client.newCall(state.request).execute();
              ResponseBody body = response.body()) {

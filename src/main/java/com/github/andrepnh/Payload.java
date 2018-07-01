@@ -22,12 +22,13 @@ public final class Payload {
 
     static {
         OkHttpClient client = new OkHttpClient();
+        // We use as payload something which is unlikely to change or become unavailable, is probably served by CDNs,
+        // is available both under http and https and is preferably small in size.
         Request request = new Request.Builder()
             .url("https://en.wikipedia.org/static/images/project-logos/enwiki.png")
             .get()
             .build();
-        try (
-            Response response = client.newCall(request).execute();
+        try (Response response = client.newCall(request).execute();
              ResponseBody body = response.body()) {
             ACTUAL = body.bytes();
             checkState(ACTUAL.length > 0);

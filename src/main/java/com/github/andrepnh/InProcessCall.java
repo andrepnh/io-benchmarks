@@ -2,7 +2,6 @@ package com.github.andrepnh;
 
 import org.openjdk.jmh.annotations.*;
 
-import static com.github.andrepnh.BenchmarkParams.*;
 
 public class InProcessCall {
 
@@ -12,9 +11,7 @@ public class InProcessCall {
     }
 
     @Benchmark
-    @Fork(FORKS)
-    @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
     public byte[] localCall(LocalCallState payloadCopy) {
         return newPayload(payloadCopy.preAllocatedArray);
     }

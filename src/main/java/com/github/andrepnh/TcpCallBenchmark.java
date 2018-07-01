@@ -7,8 +7,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.github.andrepnh.BenchmarkParams.*;
-
 public class TcpCallBenchmark {
     @State(Scope.Thread)
     public static class SocketWriting {
@@ -60,9 +58,7 @@ public class TcpCallBenchmark {
     }
 
     @Benchmark
-    @Fork(FORKS)
-    @Measurement(iterations = ITERATIONS)
-    @Warmup(iterations  = WARMUP_ITERATIONS)
+    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
     public void tcpWrite(SocketWriting state) throws IOException {
         state.clientOutputStream.write(state.payload);
         state.clientOutputStream.flush();
