@@ -20,8 +20,7 @@ public final class Payload {
   static {
     OkHttpClient client = new OkHttpClient();
     // We use as payload something which is unlikely to change or become unavailable, is probably
-    // served by CDNs,
-    // is available both under http and https and is preferably small in size.
+    // served by CDNs, is available both under http and https and is preferably small in size.
     var request =
         new Request.Builder()
             .url("https://en.wikipedia.org/static/images/project-logos/enwiki.png")

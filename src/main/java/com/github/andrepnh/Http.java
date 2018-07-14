@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-public class HttpCallBenchmark {
+public class Http {
   @State(Scope.Thread)
   public static class LocalHttpState {
     private Undertow server;
@@ -29,7 +29,7 @@ public class HttpCallBenchmark {
               .addHttpListener(8080, "localhost")
               .setHandler(
                   serverExchange -> {
-                    ByteBuffer responseBody = ByteBuffer.wrap(Payload.copy());
+                    var responseBody = ByteBuffer.wrap(Payload.copy());
                     HeaderMap responseHeaders = serverExchange.getResponseHeaders();
                     Payload.RESPONSE_HEADERS.forEach(
                         (name, values) -> responseHeaders.putAll(name, values));

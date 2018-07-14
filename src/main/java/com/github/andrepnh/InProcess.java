@@ -5,7 +5,7 @@ import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
-public class InProcessCall {
+public class InProcess {
 
   @State(Scope.Benchmark)
   public static class LocalCallState {

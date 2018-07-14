@@ -18,7 +18,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.BenchmarkParams;
 
-public class FileSystemCallBenchmark {
+public class FileSystem {
   @State(Scope.Benchmark)
   public static class WritingState {
     public File file;
@@ -46,10 +46,8 @@ public class FileSystemCallBenchmark {
       } finally {
         if (file != null) {
           // Requesting file deletion on JVM termination takes care of deleting files when tbe
-          // benchmark
-          // process is interrupted. Now we're just making sure files are deleted as soon as no
-          // longer necessary
-          // to avoid disk space issues
+          // benchmark process is interrupted. Now we're just making sure files are deleted as soon
+          // as no longer necessary to avoid disk space issues
           checkState(file.delete(), "Could not delete file %s", file.getName());
         }
       }

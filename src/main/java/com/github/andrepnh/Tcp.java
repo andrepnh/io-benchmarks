@@ -14,7 +14,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-public class TcpCallBenchmark {
+public class Tcp {
   @State(Scope.Thread)
   public static class SocketWriting {
     private static final AtomicInteger SERIAL = new AtomicInteger();
