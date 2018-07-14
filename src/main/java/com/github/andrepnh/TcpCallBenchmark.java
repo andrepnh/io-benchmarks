@@ -1,11 +1,18 @@
 package com.github.andrepnh;
 
-import org.openjdk.jmh.annotations.*;
-
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
 public class TcpCallBenchmark {
   @State(Scope.Thread)
@@ -62,7 +69,6 @@ public class TcpCallBenchmark {
   }
 
   @Benchmark
-  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public void tcpWrite(SocketWriting state) throws IOException {
     state.clientOutputStream.write(state.payload);
     state.clientOutputStream.flush();

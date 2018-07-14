@@ -2,11 +2,16 @@ package com.github.andrepnh;
 
 import io.undertow.Undertow;
 import io.undertow.util.HeaderMap;
-import okhttp3.*;
-import org.openjdk.jmh.annotations.*;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
 public class HttpCallBenchmark {
   @State(Scope.Thread)
@@ -93,7 +98,6 @@ public class HttpCallBenchmark {
   }
 
   @Benchmark
-  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String localHttpRequest(LocalHttpState state) throws IOException {
     try (var response = state.client.newCall(state.request).execute();
         var body = response.body()) {
@@ -102,7 +106,6 @@ public class HttpCallBenchmark {
   }
 
   @Benchmark
-  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String remoteHttpRequest(RemoteHttpState state) throws IOException {
     try (var response = state.client.newCall(state.request).execute();
         var body = response.body()) {
@@ -111,7 +114,6 @@ public class HttpCallBenchmark {
   }
 
   @Benchmark
-  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String remoteHttpsRequest(RemoteHttpsState state) throws IOException {
     try (var response = state.client.newCall(state.request).execute();
         var body = response.body()) {

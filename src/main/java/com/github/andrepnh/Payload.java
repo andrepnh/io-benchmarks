@@ -1,19 +1,16 @@
 package com.github.andrepnh;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import io.undertow.util.HttpString;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkState;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 
 public final class Payload {
   public static final byte[] ACTUAL;

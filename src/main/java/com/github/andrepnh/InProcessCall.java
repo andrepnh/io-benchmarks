@@ -1,6 +1,9 @@
 package com.github.andrepnh;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.CompilerControl;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 
 public class InProcessCall {
 
@@ -10,7 +13,6 @@ public class InProcessCall {
   }
 
   @Benchmark
-  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public byte[] localCall(LocalCallState payloadCopy) {
     return newPayload(payloadCopy.preAllocatedArray);
   }
