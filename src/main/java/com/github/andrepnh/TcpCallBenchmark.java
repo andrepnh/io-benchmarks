@@ -8,60 +8,63 @@ import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TcpCallBenchmark {
-    @State(Scope.Thread)
-    public static class SocketWriting {
-        private static final AtomicInteger SERIAL = new AtomicInteger();
+  @State(Scope.Thread)
+  public static class SocketWriting {
+    private static final AtomicInteger SERIAL = new AtomicInteger();
 
-        private Thread serverThread;
+    private Thread serverThread;
 
-        private ServerSocket serverSocket;
+    private ServerSocket serverSocket;
 
-        private Socket clientSocket;
+    private Socket clientSocket;
 
-        public OutputStream clientOutputStream;
+    public OutputStream clientOutputStream;
 
-        public byte[] payload;
+    public byte[] payload;
 
-        @Setup(Level.Iteration)
-        public void openServerSocket() throws IOException {
-            payload = Payload.copy();
-            int port = 10000 + SERIAL.getAndIncrement();
-            serverSocket = new ServerSocket(port);
-            serverThread = new Thread(() -> {
+    @Setup(Level.Iteration)
+    public void openServerSocket() throws IOException {
+      payload = Payload.copy();
+      int port = 10000 + SERIAL.getAndIncrement();
+      serverSocket = new ServerSocket(port);
+      serverThread =
+          new Thread(
+              () -> {
                 try {
-                    try (Socket clientSocket = serverSocket.accept();
-                         BufferedInputStream inputStream= new BufferedInputStream(clientSocket.getInputStream())) {
-                        byte[] readBuffer = new byte[payload.length];
-                        while (inputStream.read(readBuffer) != -1) {
-                            if (Thread.interrupted()) {
-                                break;
-                            }
-                        }
+                  try (Socket clientSocket = serverSocket.accept();
+                      BufferedInputStream inputStream =
+                          new BufferedInputStream(clientSocket.getInputStream())) {
+                    byte[] readBuffer = new byte[payload.length];
+                    while (inputStream.read(readBuffer) != -1) {
+                      if (Thread.interrupted()) {
+                        break;
+                      }
                     }
-                    serverSocket.close();
+                  }
+                  serverSocket.close();
                 } catch (IOException e) {
-                    throw new IllegalStateException(e);
+                  throw new IllegalStateException(e);
                 }
-            }, SocketWriting.class.getSimpleName() + ":" + port);
-            serverThread.start();
-            clientSocket = new Socket("localhost", port);
-            clientOutputStream = new BufferedOutputStream(clientSocket.getOutputStream());
-        }
-
-        @TearDown(Level.Iteration)
-        public void closeSockets() throws Exception {
-            clientOutputStream.close();
-            clientSocket.close();
-            serverThread.interrupt();
-            serverThread.join();
-        }
+              },
+              SocketWriting.class.getSimpleName() + ":" + port);
+      serverThread.start();
+      clientSocket = new Socket("localhost", port);
+      clientOutputStream = new BufferedOutputStream(clientSocket.getOutputStream());
     }
 
-    @Benchmark
-    @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
-    public void tcpWrite(SocketWriting state) throws IOException {
-        state.clientOutputStream.write(state.payload);
-        state.clientOutputStream.flush();
+    @TearDown(Level.Iteration)
+    public void closeSockets() throws Exception {
+      clientOutputStream.close();
+      clientSocket.close();
+      serverThread.interrupt();
+      serverThread.join();
     }
+  }
 
+  @Benchmark
+  @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
+  public void tcpWrite(SocketWriting state) throws IOException {
+    state.clientOutputStream.write(state.payload);
+    state.clientOutputStream.flush();
+  }
 }
