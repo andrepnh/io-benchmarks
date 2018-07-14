@@ -95,8 +95,8 @@ public class HttpCallBenchmark {
   @Benchmark
   @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String localHttpRequest(LocalHttpState state) throws IOException {
-    try (Response response = state.client.newCall(state.request).execute();
-        ResponseBody body = response.body()) {
+    try (var response = state.client.newCall(state.request).execute();
+        var body = response.body()) {
       return body.string();
     }
   }
@@ -104,8 +104,8 @@ public class HttpCallBenchmark {
   @Benchmark
   @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String remoteHttpRequest(RemoteHttpState state) throws IOException {
-    try (Response response = state.client.newCall(state.request).execute();
-        ResponseBody body = response.body()) {
+    try (var response = state.client.newCall(state.request).execute();
+        var body = response.body()) {
       return body.string();
     }
   }
@@ -113,8 +113,8 @@ public class HttpCallBenchmark {
   @Benchmark
   @BenchmarkMode({Mode.SingleShotTime, Mode.Throughput})
   public String remoteHttpsRequest(RemoteHttpsState state) throws IOException {
-    try (Response response = state.client.newCall(state.request).execute();
-        ResponseBody body = response.body()) {
+    try (var response = state.client.newCall(state.request).execute();
+        var body = response.body()) {
       return body.string();
     }
   }

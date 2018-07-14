@@ -25,13 +25,13 @@ public final class Payload {
     // We use as payload something which is unlikely to change or become unavailable, is probably
     // served by CDNs,
     // is available both under http and https and is preferably small in size.
-    Request request =
+    var request =
         new Request.Builder()
             .url("https://en.wikipedia.org/static/images/project-logos/enwiki.png")
             .get()
             .build();
-    try (Response response = client.newCall(request).execute();
-        ResponseBody body = response.body()) {
+    try (var response = client.newCall(request).execute();
+        var body = response.body()) {
       ACTUAL = body.bytes();
       checkState(ACTUAL.length > 0);
       RESPONSE_HEADERS =
@@ -55,7 +55,7 @@ public final class Payload {
   }
 
   public static byte[] copy() {
-    byte[] copy = new byte[Payload.ACTUAL.length];
+    var copy = new byte[Payload.ACTUAL.length];
     System.arraycopy(Payload.ACTUAL, 0, copy, 0, copy.length);
     return copy;
   }
