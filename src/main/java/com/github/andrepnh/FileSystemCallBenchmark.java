@@ -21,7 +21,7 @@ import org.openjdk.jmh.infra.BenchmarkParams;
 public class FileSystemCallBenchmark {
   @State(Scope.Benchmark)
   public static class WritingState {
-    private File file;
+    public File file;
 
     public OutputStream outputStream;
 
@@ -58,11 +58,11 @@ public class FileSystemCallBenchmark {
 
   @State(Scope.Benchmark)
   public static class ReadingState {
-    private File file;
+    public File file;
 
     public BufferedInputStream inputStream;
 
-    public final byte[] toRead = new byte[Payload.ACTUAL.length];
+    public final byte[] preInstantiatedArray = new byte[Payload.ACTUAL.length];
 
     @Setup(Level.Iteration)
     public void prepareForRead(BenchmarkParams params) throws IOException {
@@ -91,6 +91,22 @@ public class FileSystemCallBenchmark {
 
   @Benchmark
   public int fileRead(ReadingState state) throws IOException {
-    return state.inputStream.read(state.toRead);
+    return state.inputStream.read(state.preInstantiatedArray);
+  }
+
+  // To mimic resource open/close we have on http benchmarks
+  @Benchmark
+  public void fileWriteWithStreamCreationAndDisposition(WritingState state) throws IOException {
+    try (var stream = new BufferedOutputStream(new FileOutputStream(state.file))) {
+      stream.write(Payload.ACTUAL);
+    }
+  }
+
+  // To mimic resource open/close we have on http benchmarks
+  @Benchmark
+  public int fileReadWithStreamCreationAndDisposition(ReadingState state) throws IOException {
+    try (var stream = new BufferedInputStream(new FileInputStream(state.file))) {
+      return stream.read(state.preInstantiatedArray);
+    }
   }
 }
