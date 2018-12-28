@@ -45,9 +45,9 @@ public class FileSystem {
         }
       } finally {
         if (file != null) {
-          // Requesting file deletion on JVM termination takes care of deleting files when tbe
-          // benchmark process is interrupted. Now we're just making sure files are deleted as soon
-          // as no longer necessary to avoid disk space issues
+          // Requesting file deletion on JVM termination takes care of deleting files when the benchmark process is
+          // interrupted. Now we're just making sure files are deleted as soon as no longer necessary to avoid disk
+          // space issues
           checkState(file.delete(), "Could not delete file %s", file.getName());
         }
       }
@@ -94,7 +94,7 @@ public class FileSystem {
 
   // To mimic resource open/close we have on http benchmarks
   @Benchmark
-  public void fileWriteWithStreamCreationAndDisposition(WritingState state) throws IOException {
+  public void fileWriteWithStreamCreationAndDisposal(WritingState state) throws IOException {
     try (var stream = new BufferedOutputStream(new FileOutputStream(state.file))) {
       stream.write(Payload.ACTUAL);
     }
@@ -102,7 +102,7 @@ public class FileSystem {
 
   // To mimic resource open/close we have on http benchmarks
   @Benchmark
-  public int fileReadWithStreamCreationAndDisposition(ReadingState state) throws IOException {
+  public int fileReadWithStreamCreationAndDisposal(ReadingState state) throws IOException {
     try (var stream = new BufferedInputStream(new FileInputStream(state.file))) {
       return stream.read(state.preInstantiatedArray);
     }

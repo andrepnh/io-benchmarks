@@ -77,16 +77,16 @@ public class Tcp {
 
   // To mimic resource open/close we have on http benchmarks
   @Benchmark
-  public void tcpWriteWithStreamCreationAndDisposition(SocketWriting state) throws IOException {
+  public void tcpWriteWithStreamCreationAndDisposal(SocketWriting state) throws IOException {
     try (var stream = new BufferedOutputStream(state.clientSocket.getOutputStream())) {
       stream.write(state.payload);
     }
   }
 
-  // To mimic open/close and first connection we might have on http benchmarks, specially if there's
+  // To mimic open/close and first connection we might have on http benchmarks, especially if there's
   // no warmup or keep alive
   @Benchmark
-  public void tcpWriteWithSocketCreationAndDisposition(SocketWriting state) throws IOException {
+  public void tcpWriteWithSocketCreationAndDisposal(SocketWriting state) throws IOException {
     try (var socket = new Socket("localhost", state.port);
         var stream = new BufferedOutputStream(socket.getOutputStream())) {
       stream.write(state.payload);
