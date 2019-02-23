@@ -1,5 +1,5 @@
 ## io-calls-benchmarking
-JMH benchmarks to compare IO calls
+JMH benchmarks to compare IO calls. Mostly to play around with JMH, [Latency Numbers Every Programmer Should Know](https://gist.github.com/jboner/2841832) is much more complete and reliable.
 
 #### Sample results
 macOS, SSD and wi-fi:
